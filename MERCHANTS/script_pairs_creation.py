@@ -54,7 +54,6 @@ def read_csv_s3(bucket, key):
 # # Create positive and negative data pairs
 
 # %%
-path_file = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/raw/trans_2024-05-13_2024-05-13"
 
 # %%
 # !pip install pyarrow
@@ -68,11 +67,12 @@ import awswrangler as wr
 path_new_file = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/processed/trans_2024-05-13_2024-05-13"
 df_data_raw = wr.s3.read_parquet(path=path_new_file)
 
+
+path_file_out = path_new_file.split('processed/')[0]+'trx-merchant-pair/'+path_new_file.split('processed/')[1]
+path_file_out
 # %%
 df_data_raw.head()
 
-# %%
-print(df_data_raw['sentence'][1000050], df_data_raw['merchant_name_combined'][1000050])
 
 # %%
 df_data_raw['num_words'] = df_data_raw['original_description_plaid_processed'].apply(lambda x: len(x.split(' ')))
@@ -81,26 +81,19 @@ df_data_raw['num_words'] = df_data_raw['original_description_plaid_processed'].a
 df_data_raw['num_words'].describe()
 
 # %%
-df_data_raw['num_words'].max()*3
+print(f" Maximim words {df_data_raw['num_words'].max()*3}")
+
+
 
 # %%
-df_data_raw[df_data_raw['num_words']==82]
+
 
 # %%
-
-df_data_raw.loc[1600443,'original_description_plaid_processed']
-
-# %%
-df_data_raw.loc[1600443,'description_combined']
-
-# %%
-df_data_raw.loc[1600443,'merchant_name_combined']
-
-# %%
+df_data_raw['len_sentence'] = df_data_raw['sentence'].apply(lambda x: len(x.split(' ')))
 df_data_raw['len_sentence'].max()
 
 # %%
-print(df_data_raw[df_data_raw['len_sentence']==df_data_raw['len_sentence'].max()]['description'])
+print(df_data_raw[df_data_raw['len_sentence']==df_data_raw['len_sentence'].max()]['description_combined'])
 
 # %%
 df_merchant_volume = df_data_raw['merchant_name_combined'].value_counts(dropna=False).to_frame()
@@ -118,40 +111,24 @@ df_merchant_volume[0:1000]
 
 # %%
 import matplotlib.pyplot as plt
-plt.plot(np.arange(df_merchant_volume.shape[0]),df_merchant_volume['cumulative_traffic'],'.')
-plt.xlim([0,4000])
+# plt.plot(np.arange(df_merchant_volume.shape[0]),df_merchant_volume['cumulative_traffic'],'.')
+# plt.xlim([0,4000])
 
 # %%
 df_merchant_volume.reset_index(drop=False,inplace=True)
 df_merchant_volume
 
 # %%
-merchants_top_n = df_merchant_volume['merchant_name_combined'][0:10].tolist()
+top_n = 2001
+merchants_top_n = df_merchant_volume['merchant_name_combined'][0:top_n].tolist()
 print(len(merchants_top_n))
 merchants_top_n
 
-# %%
-20*50/3600
-
-# %%
-166/60
-
-# %%
-18*60*10*5/3600
-
-# %%
-# !pwd
-# !ls -ltr /opt/amazon/sagemaker/sagemaker-code-editor-server-data/data/User/History
-# !more /opt/amazon/sagemaker/sagemaker-code-editor-server-data/data/User/History/14a6abb3/entries.json
-# !touch /opt/amazon/sagemaker/sagemaker-code-editor-server-data/data/User/History/
-# !touch /home/sagemaker-user/toto
-# !echo "abdc" > /home/sagemaker-user/toto
-# !more /home/sagemaker-user/toto
 
 # %%
 #!pip install path
 
-# %%
+# # %%
 from path import Path
 
 # %%
@@ -159,7 +136,7 @@ from path import Path
 
 # %%
 #This step needs to be parallelized
-n_pairs = 5
+n_pairs = 5000
 df_all = pd.DataFrame()
 for i,merchant in enumerate(merchants_top_n):
   print(i,merchant)
@@ -177,13 +154,14 @@ for i,merchant in enumerate(merchants_top_n):
   df_positive['merchant_name_combined'] = df_positive['true_merchant_name_combined']
   df_all = pd.concat([df_all, df_negative, df_positive[['transaction_id','sentence','sentence2','original_description_plaid_processed','true_merchant_name_combined','merchant_name_combined','true_label','label']] ], axis=0)
   #!echo "abdc" > /home/sagemaker-user/toto
-  if i%100 == 0:
+  if i%10 == 0:
     Path("/opt/amazon/sagemaker/sagemaker-code-editor-server-data/data/User/History/reset_timer.txt").touch()
-  if i%500 == 0:
+  if i%100 == 0:
     print('saving')
     print(i)
+    s3_path_out = path_file_out+'_top_'+str(top_n)+'_'+str(i)+'.parquet'
     #s3_path_out = path_new_file+'_'+str(i)+'.parquet'
-    s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/sample.parquet"
+    #s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/sample.parquet"
     #s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/transactions_2024-05-20_2024-05-20_"+str(i)+".parquet"
     #s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/sm_test.parquet"
     df_all.to_parquet(s3_path_out, engine='pyarrow')
@@ -193,60 +171,9 @@ for i,merchant in enumerate(merchants_top_n):
 
 
 # %%
-df_all
-
-# %%
-s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/sample.parquet"
-
-
-# %%
-df_data_pairs = wr.s3.read_parquet(path=s3_path_out)
-
-# %%
-df_data_pairs
-
-# %%
-s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/sample.parquet"
-df_all.to_parquet(s3_path_out, engine='pyarrow')
-
-
-
-# # %%
-# Path("/opt/amazon/sagemaker/sagemaker-code-editor-server-data/data/User/History/reset_timer.txt").touch()
-
-# # %%
-# s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/transactions_2024-05-20_2024-05-20_top5K.parquet"
-# #s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/sm_test.parquet"
-# df_all.to_parquet(s3_path_out, engine='pyarrow')
-
-# %%
-print("finished")
-
-# %%
 df_all.shape
 
-# %%
-df_all.reset_index(drop=True, inplace=True)
-
-# %%
-df_all.head()
-
-# %%
-df_all.loc[0,'sentence']
-
-# %%
-df_all.loc[0,'sentence2']
-
-# %%
-# df_all.to_csv("/Users/claracastellanos/Documents/DATA/MERCHANTS/2024_05_20_sample_top5K_pairs.csv")
-
-# %%
-print(f"Finished creating file")
-
-# %%
-#write this data to s3
-
-# %%
-df_all.head(20)
-
-
+s3_path_out = path_file_out+'_top_'+str(top_n)+'.parquet'
+df_all.to_parquet(s3_path_out, engine='pyarrow')
+print(f"Finished creating {s3_path_out}")
+#df_data_pairs = wr.s3.read_parquet(path=s3_path_out)
