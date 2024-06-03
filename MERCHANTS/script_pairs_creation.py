@@ -64,7 +64,7 @@ def read_csv_s3(bucket, key):
 import awswrangler as wr
 
 # %%
-path_new_file = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/processed/trans_2024-05-14_2024-05-14"
+path_new_file = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/processed/trans_2024-05-15_2024-05-15"
 df_data_raw = wr.s3.read_parquet(path=path_new_file)
 
 
