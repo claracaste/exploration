@@ -64,7 +64,7 @@ def read_csv_s3(bucket, key):
 import awswrangler as wr
 
 # %%
-path_new_file = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/processed/trans_2024-05-13_2024-05-13"
+path_new_file = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/processed/trans_2024-05-14_2024-05-14"
 df_data_raw = wr.s3.read_parquet(path=path_new_file)
 
 
@@ -75,7 +75,7 @@ df_data_raw.head()
 
 
 # %%
-df_data_raw['num_words'] = df_data_raw['original_description_plaid_processed'].apply(lambda x: len(x.split(' ')))
+df_data_raw['num_words'] = df_data_raw['description_combined_processed'].apply(lambda x: len(x.split(' ')))
 
 # %%
 df_data_raw['num_words'].describe()
@@ -140,23 +140,23 @@ n_pairs = 5000
 df_all = pd.DataFrame()
 for i,merchant in enumerate(merchants_top_n):
   print(i,merchant)
-  df_s1 = df_data_raw[df_data_raw['merchant_name_combined']==merchant][['transaction_id','sentence','sentence2','original_description_plaid_processed','merchant_name_combined']]
+  df_s1 = df_data_raw[df_data_raw['merchant_name_combined']==merchant][['transaction_id','sentence','sentence2','description_combined_processed','merchant_name_combined']]
   df_s1.rename(columns={'merchant_name_combined':'true_merchant_name_combined'}, inplace=True)
   df_s2 = df_data_raw[df_data_raw['merchant_name_combined']!=merchant][['transaction_id','merchant_name_combined']]
-  df_negative = pd.concat([df_s1.sample(min(df_s1.shape[0],2*n_pairs),random_state=1)[['transaction_id','sentence','sentence2','original_description_plaid_processed','true_merchant_name_combined']].reset_index(drop=True), \
+  df_negative = pd.concat([df_s1.sample(min(df_s1.shape[0],2*n_pairs),random_state=1)[['transaction_id','sentence','sentence2','description_combined_processed','true_merchant_name_combined']].reset_index(drop=True), \
                            df_s2.sample(min(df_s1.shape[0],2*n_pairs), random_state=1)[['merchant_name_combined']].reset_index(drop=True)], axis=1 , ignore_index=True)
   df_negative['true_label'] = 0
   df_negative['label'] = 0 + np.abs(np.random.normal(0,0.2,[1,df_negative.shape[0]])[0])
-  df_negative.columns = ['transaction_id','sentence','sentence2','original_description_plaid_processed','true_merchant_name_combined','merchant_name_combined','true_label','label']
+  df_negative.columns = ['transaction_id','sentence','sentence2','description_combined_processed','true_merchant_name_combined','merchant_name_combined','true_label','label']
   df_positive = df_s1.sample(min(df_s1.shape[0],n_pairs), random_state=1)
   df_positive['true_label'] = 1
   df_positive['label'] = 1 - np.abs(np.random.normal(0,0.2,[1,df_positive.shape[0]])[0])
   df_positive['merchant_name_combined'] = df_positive['true_merchant_name_combined']
-  df_all = pd.concat([df_all, df_negative, df_positive[['transaction_id','sentence','sentence2','original_description_plaid_processed','true_merchant_name_combined','merchant_name_combined','true_label','label']] ], axis=0)
+  df_all = pd.concat([df_all, df_negative, df_positive[['transaction_id','sentence','sentence2','description_combined_processed','true_merchant_name_combined','merchant_name_combined','true_label','label']] ], axis=0)
   #!echo "abdc" > /home/sagemaker-user/toto
-  if i%10 == 0:
-    Path("/opt/amazon/sagemaker/sagemaker-code-editor-server-data/data/User/History/reset_timer.txt").touch()
   if i%100 == 0:
+    Path("/opt/amazon/sagemaker/sagemaker-code-editor-server-data/data/User/History/reset_timer.txt").touch()
+  if i%500 == 0:
     print('saving')
     print(i)
     s3_path_out = path_file_out+'_top_'+str(top_n)+'_'+str(i)+'.parquet'
