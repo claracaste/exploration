@@ -164,7 +164,7 @@ for i,merchant in enumerate(merchants_top_n):
     #s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/sample.parquet"
     #s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/transactions_2024-05-20_2024-05-20_"+str(i)+".parquet"
     #s3_path_out = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/sm_test.parquet"
-    df_all.to_parquet(s3_path_out, engine='pyarrow')
+    # df_all.to_parquet(s3_path_out, engine='pyarrow')
 
 
 
