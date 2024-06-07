@@ -181,7 +181,7 @@ else:
 
 # %%
 import os
-directory = "/home/sagemaker-user/models/model9"
+directory = "/home/sagemaker-user/models/model8"
 
 # Check if the directory already exists
 if not os.path.exists(directory):
@@ -200,7 +200,7 @@ from sentence_transformers import SentenceTransformerTrainer
 # %%
 args = SentenceTransformerTrainingArguments(
     # Required parameter:
-    output_dir="/home/sagemaker-user/models/model9",
+    output_dir="/home/sagemaker-user/models/model8",
     # Optional training parameters:
     num_train_epochs=3,
     per_device_train_batch_size=128,
@@ -212,11 +212,11 @@ args = SentenceTransformerTrainingArguments(
     batch_sampler=BatchSamplers.NO_DUPLICATES,  # losses that use "in-batch negatives" benefit from no duplicates
     # Optional tracking/debugging parameters:
     eval_strategy="steps",
-    eval_steps=200,
+    eval_steps=100,
     save_strategy="steps",
-    save_steps=200,
+    save_steps=100,
     save_total_limit=50,
-    logging_steps=200,
+    logging_steps=100,
     run_name="test1",  # Will be used in W&B if `wandb` is installed
     load_best_model_at_end= True,
     logging_dir="/home/sagemaker-user/logs",
@@ -267,7 +267,7 @@ trainer.train()
 # test_evaluator(model)
 
 # 8. Save the trained model
-model.save_pretrained("/home/sagemaker-user/models/model9final")
+model.save_pretrained("/home/sagemaker-user/models/model8final")
 
 # %%
 #!ls ./models/model1/checkpoint-600
