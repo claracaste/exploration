@@ -1,2 +1,5 @@
-awswarangler
+accelerate==0.27.2
+sentence-transformers
+umap-learn
+awswrangler
 path
