@@ -41,6 +41,8 @@ from sklearn.model_selection import train_test_split
 # %%
 s3_path = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/trans_2024-05-14_2024-05-14_top_2001.parquet"
 
+s3_path = "s3://cleo-data-science/transaction_enrichment/experimental_data/caste/trx-merchant-pair/cons_2024-05-15_2024-05-18_1.parquet/"
+
 
 df_data_raw = wr.s3.read_parquet(path=s3_path)
 df_data_raw.shape
@@ -51,13 +53,33 @@ print(torch.cuda.device_count())
 # %%
 df_data_raw.head()
 
+
+import re
+pattern = r"Cash\sApp\s(?!Transfer)[\w\s]+"
+result = re.sub(pattern, "Cash App", 'Cash App Transfer')
+result
+df_data_raw['original_merchant_name_combined'] = df_data_raw['original_merchant_name_combined'].apply(lambda x: re.sub(pattern, "Cash App", x) )
+df_data_raw['merchant_name_combined'] = df_data_raw['merchant_name_combined'].apply(lambda x: re.sub(pattern, "Cash App", x) )
+df_data_raw['true_merchant_name_combined'] = df_data_raw['true_merchant_name_combined'].apply(lambda x: re.sub(pattern, "Cash App", x) )
+
+#only keep some cash app
+
+d1 = df_data_raw[df_data_raw['original_merchant_name_combined'] == 'Cash App'][:]
+d2 = df_data_raw[df_data_raw['original_merchant_name_combined'] != 'Cash App'][:]
+df_data_raw2 = pd.concat([d1.sample(50000, random_state = 1), d2], axis=0)
+
+df_data_raw2 = df_data_raw2.sample(3000000, random_state =1)
+
+
 # %%
 #%pip install s3fs --upgrade
 #import s3fs
 
+
+
 # %%
-df_ , df_test, y_, y_test = train_test_split(df_data_raw, df_data_raw['true_label'], test_size = 0.02, random_state=1)
-df_train, df_val, y_train, y_val = train_test_split(df_, df_['true_label'], test_size = 0.1, random_state=1)
+df_ , df_test, y_, y_test = train_test_split(df_data_raw2, df_data_raw2['true_label'], test_size = 0.05, random_state=1)
+df_train, df_val, y_train, y_val = train_test_split(df_, df_['true_label'], test_size = 0.05, random_state=1)
 df_train.reset_index(drop=True, inplace=True)
 df_val.reset_index(drop=True, inplace=True)
 df_test.reset_index(drop=True, inplace=True)
@@ -161,9 +183,9 @@ from sentence_transformers import SentenceTransformerTrainer
 # %%
 args = SentenceTransformerTrainingArguments(
     # Required parameter:
-    output_dir="/home/sagemaker-user/models/model6",
+    output_dir="/home/sagemaker-user/models/model10",
     # Optional training parameters:
-    num_train_epochs=1,
+    num_train_epochs=10,
     per_device_train_batch_size=128,
     per_device_eval_batch_size=128,
     warmup_ratio=0.1,
@@ -172,11 +194,11 @@ args = SentenceTransformerTrainingArguments(
     batch_sampler=BatchSamplers.NO_DUPLICATES,  # losses that use "in-batch negatives" benefit from no duplicates
     # Optional tracking/debugging parameters:
     eval_strategy="steps",
-    eval_steps=50,
+    eval_steps=200,
     save_strategy="steps",
-    save_steps=50,
-    save_total_limit=10,
-    logging_steps=50,
+    save_steps=200,
+    save_total_limit=100,
+    logging_steps=200,
     run_name="test1",  # Will be used in W&B if `wandb` is installed
     load_best_model_at_end= True,
     logging_dir="/home/sagemaker-user/logs",
@@ -186,13 +208,13 @@ args = SentenceTransformerTrainingArguments(
 ds_val[0]
 
 # %%
-dev_evaluator = EmbeddingSimilarityEvaluator(
-    sentences1=df_val[text_col],
-    sentences2=df_val["merchant_name_combined"],
-    scores=df_val["true_label"],
-    main_similarity=SimilarityFunction.COSINE,
-    name="sts-dev",
-)
+# dev_evaluator = EmbeddingSimilarityEvaluator(
+#     sentences1=df_val[text_col],
+#     sentences2=df_val["merchant_name_combined"],
+#     scores=df_val["true_label"],
+#     main_similarity=SimilarityFunction.COSINE,
+#     name="sts-dev",
+# )
 
 # %%
 #dev_evaluator(model)
@@ -211,7 +233,7 @@ trainer = SentenceTransformerTrainer(
     loss=train_loss,
     #evaluator=dev_evaluator,
 )
-trainer.train()
+trainer.train(resume_from_checkpoint="/home/sagemaker-user/models/model10/checkpoint-1400")
 
 # %%
 
@@ -227,7 +249,7 @@ trainer.train()
 # test_evaluator(model)
 
 # 8. Save the trained model
-model.save_pretrained("/home/sagemaker-user/models/model6final")
+model.save_pretrained("/home/sagemaker-user/models/model10final")
 
 # %%
 #!ls ./models/model1/checkpoint-600
