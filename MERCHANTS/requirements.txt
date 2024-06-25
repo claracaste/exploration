@@ -1,5 +1,8 @@
 accelerate==0.27.2
 sentence-transformers
+transformers
 umap-learn
 awswrangler
 path
+psutil
+evaluate
